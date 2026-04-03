@@ -1,7 +1,7 @@
 CONFIG = {
-    # "ticker":  "^GSPC", # sp500
+    "ticker":  "^GSPC", # sp500
     # "ticker":  "^VIX",
-    "ticker":  "NG=F", # gas
+    # "ticker":  "NG=F", # gas
     # "ticker":  "CL=F", # petroleo
 
     "start":   "1900-01-01",
