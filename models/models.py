@@ -4,18 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-# class NetDet(nn.Module):
-#     def __init__(self, input_dim=20, hidden=32):
-#         super().__init__()
-#         self.net = nn.Sequential(
-#             nn.Linear(input_dim, hidden),
-#             nn.ReLU(),
-#             nn.Dropout(0.2),
-#             nn.Linear(hidden, 1)
-#         )
-#     def forward(self, x):
-#         return self.net(x).squeeze(-1)
-
 
 class BayesLinear(nn.Module):
     def __init__(self, in_f, out_f, prior_std=1.0):

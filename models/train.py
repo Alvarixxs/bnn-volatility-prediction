@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
+
 def to_t(arr):
     return torch.tensor(arr, dtype=torch.float32)
 
@@ -20,80 +21,51 @@ def elbo_loss(model, x, y, n_samples=3, n_train=1):
     ) / n_samples
     return nll + model.kl() / n_train, nll.item()
 
-def train_det(model, X_tr, y_tr, X_val, y_val, cfg):
-    opt = torch.optim.Adam(model.parameters(),
-                           lr=cfg["lr"], weight_decay=cfg["weight_decay"])
-    dl  = make_loaders(X_tr, y_tr, cfg["batch_size"])
-    best_val, best_state, no_imp = float("inf"), None, 0
-
-    best_val   = float("inf")
-    best_state = {k: v.clone() for k, v in model.state_dict().items()}  # ← aquí
-    no_imp     = 0
-
-    for epoch in range(cfg["max_epochs"]):
-        model.train()
-        for xb, yb in dl:
-            opt.zero_grad()
-            F.mse_loss(model(xb), yb).backward()
-            opt.step()
-
-        model.eval()
-        with torch.no_grad():
-            vl = F.mse_loss(model(to_t(X_val)), to_t(y_val)).item()
-
-        if vl < best_val - 1e-4:
-            best_val, best_state, no_imp = vl, {k:v.clone() for k,v in model.state_dict().items()}, 0
-        else:
-            no_imp += 1
-            if no_imp >= cfg["patience"]:
-                break
-
-    model.load_state_dict(best_state)
-    return model
-
-def train_bnn(model, X_tr, y_tr, X_val, y_val, cfg):
+def train_bnn(model, X_tr, y_tr, cfg):
     n_train = len(X_tr)
     opt = torch.optim.Adam(model.parameters(), lr=cfg["lr"])
     dl  = make_loaders(X_tr, y_tr, cfg["batch_size"])
-    best_val, best_state, no_imp = float("inf"), None, 0
 
-    for epoch in range(cfg["max_epochs"]):
+    for _ in range(cfg["max_epochs"]):
         model.train()
+        train_loss = 0.0
         for xb, yb in dl:
             opt.zero_grad()
             loss, _ = elbo_loss(model, xb, yb, n_train=n_train)
             loss.backward()
             opt.step()
+            train_loss += loss.item()
+        train_loss /= len(dl)
 
-        model.eval()
-        with torch.no_grad():
-            vl = F.mse_loss(model(to_t(X_val), sample=False),
-                            to_t(y_val)).item()
-
-        if vl < best_val - 1e-4:
-            best_val, best_state, no_imp = vl, {k:v.clone() for k,v in model.state_dict().items()}, 0
-        else:
-            no_imp += 1
-            if no_imp >= cfg["patience"]:
-                break
-
-    model.load_state_dict(best_state)
     return model
 
 def predict_bnn(model, X_test, y_std, y_mean, n_samples=500):
     model.train()
     x = torch.tensor(X_test, dtype=torch.float32)
-    with torch.no_grad():
-        preds = torch.stack([model(x, sample=True) for _ in range(n_samples)]).numpy()
 
-    mean_n      = preds.mean(0)
-    epi_std_n   = preds.std(0)
-    alea_std_n  = model.obs_std().item()
-    total_std_n = np.sqrt(epi_std_n**2 + alea_std_n**2)
+    with torch.no_grad():
+        raw_preds = torch.stack([model(x, sample=True)
+                                 for _ in range(n_samples)])  # (S, N)
+
+    raw_preds_orig = raw_preds * y_std + y_mean  # (S, N)
+    sigma2 = (model.obs_std().item() * y_std) ** 2
+
+    preds_r2 = torch.exp(raw_preds_orig + sigma2 / 2)  # (S, N)
+    mean_r2 = preds_r2.mean(0).numpy()   # (N,)
+
+    epi_var = preds_r2.var(0).numpy()    # varianza muestral (S-1 en denominador)
+    epi_std = np.sqrt(epi_var)
+
+    alea_var_per_sample = torch.exp(2 * raw_preds_orig + sigma2) * (np.exp(sigma2) - 1)
+    alea_var = alea_var_per_sample.mean(0).numpy()
+    alea_std = np.sqrt(alea_var)
+
+    # varianza total
+    total_std = np.sqrt(epi_var + alea_var)
 
     return {
-        "mean":      mean_n * y_std + y_mean,
-        "epi_std":   epi_std_n * y_std,
-        "alea_std":  alea_std_n * y_std,
-        "total_std": total_std_n * y_std,
+        "mean":      mean_r2,       # E[r²|x,D] en escala original
+        "epi_std":   epi_std,       # std epistémica en escala de r²
+        "alea_std":  alea_std,      # std aleatórica en escala de r²
+        "total_std": total_std,     # std total en escala de r²
     }
