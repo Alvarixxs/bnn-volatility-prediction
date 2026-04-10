@@ -1,9 +1,9 @@
 CONFIG = {
-    # "ticker": "^GSPC",
+    "ticker": "^GSPC",
 
     # "ticker":  "NG=F", # gas
     # "ticker":  "CL=F", # petroleo
-    "ticker":  "EWZ", # brasil
+    # "ticker":  "EWZ", # brasil
 
     # "ticker":  "HG=F", # oro
     # "ticker":  "^N225", # NIKKEI
@@ -12,7 +12,7 @@ CONFIG = {
     "end":     "2026-04-01",
 
     "subperiodos": {
-        "Crisis 2008":        ("2007-07-01", "2009-12-31"),
+        "2008":        ("2007-07-01", "2009-12-31"),
     },
 
     "window":    30,
