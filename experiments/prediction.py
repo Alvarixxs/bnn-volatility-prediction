@@ -30,7 +30,6 @@ garch_vol = np.exp(0.5 * garch)
 # ── métricas ──────────────────────────────────────────────────────────────────
 rmse_bnn   = np.sqrt(np.mean((bnn_vol   - y_vol)**2))
 rmse_garch = np.sqrt(np.mean((garch_vol - y_vol)**2))
-rmse_naive = np.sqrt(np.mean((y_vol[:-1] - y_vol[1:])**2))
 
 def qlike(sigma_pred, r2_real):
     var_pred = sigma_pred ** 2
@@ -39,11 +38,9 @@ def qlike(sigma_pred, r2_real):
 
 qlike_bnn   = qlike(bnn_vol,   y_vol)
 qlike_garch = qlike(garch_vol, y_vol)
-qlike_naive = qlike(y_vol[:-1], y_vol[1:])
 
 print(f"{'Modelo':10s}  {'RMSE':>10}  {'QLIKE':>10}")
-print(f"{'Naive':10s}  {rmse_naive:>10.5f} {qlike_naive:>10.5f}")
-print(f"{'BNN':10s}  {rmse_bnn:>10.5f} {qlike_bnn:>10.5f}")
+print(f"{'Red neuronal bayesiana':10s}  {rmse_bnn:>10.5f} {qlike_bnn:>10.5f}")
 print(f"{'GARCH':10s}  {rmse_garch:>10.5f} {qlike_garch:>10.5f}")
 
 # ── paleta ────────────────────────────────────────────────────────────────────
