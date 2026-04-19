@@ -8,8 +8,10 @@ import yfinance as yf
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../models'))
 from config import CONFIG
 
+ticker_clean = CONFIG['ticker'].replace('^', '').replace('=', '_')
+
 # ── cargar datos ──────────────────────────────────────────────────────────────
-OUT_DIR  = f"results/{CONFIG['ticker'].replace('^', '').replace('=', '_')}"
+OUT_DIR  = f"results/{ticker_clean}"
 READ_DIR = f"{OUT_DIR}/data"
 SAVE_DIR = f"{OUT_DIR}/plots"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -105,6 +107,18 @@ ax.set_ylabel("Riqueza", fontsize=16)
 ax.legend(facecolor="white", edgecolor="#dddddd", fontsize=16, loc="upper left")
 plt.tight_layout()
 
-fname = f"{SAVE_DIR}/wealth_{CONFIG['ticker'].replace('^', '').replace('=', '_')}.png"
+fname = f"{SAVE_DIR}/wealth_{ticker_clean}.png"
 plt.savefig(fname, dpi=150, bbox_inches="tight", facecolor="white")
 print(f"\nGuardada: {fname}")
+
+import pandas as pd
+import numpy as np
+
+df_export = pd.DataFrame({
+    'dia': np.arange(len(t)),
+    'bnn': W_bnn,
+    'garch': W_garch,
+    'buyhold': W_naive
+})
+df_export.to_csv(f"{SAVE_DIR}/wealth_{ticker_clean}.csv", index=False)
+print(f"CSV guardado: {SAVE_DIR}/wealth_{ticker_clean}.csv")

@@ -3,14 +3,17 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MaxNLocator
 import json, sys, os
+import pandas as pd
 from datetime import datetime
 import yfinance as yf
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../models'))
 from config import CONFIG
 
+ticker_clean = CONFIG['ticker'].replace('^', '').replace('=', '_')
+
 # ── cargar datos ──────────────────────────────────────────────────────────────
-OUT_DIR  = f"results/{CONFIG['ticker'].replace('^', '').replace('=', '_')}"
+OUT_DIR  = f"results/{ticker_clean}"
 READ_DIR = f"{OUT_DIR}/data"
 SAVE_DIR = f"{OUT_DIR}/plots"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -31,7 +34,7 @@ log_ret = np.log(df["Close"].squeeze() / df["Close"].squeeze().shift(1)).dropna(
 ret_te  = log_ret.loc[log_ret.index.strftime("%Y-%m-%d").isin(dates_te)].values[:len(y_te)]
 
 # ── volatilidad ───────────────────────────────────────────────────────────────
-bnn_vol  = np.sqrt(bnn_mean)
+bnn_vol   = np.sqrt(bnn_mean)
 garch_vol = np.exp(0.5 * garch)
 
 TARGET_VOL       = bnn_vol.mean()
@@ -78,7 +81,6 @@ def setup_ax(ax):
     ax.grid(False)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
 
-
 def format_dates(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
     ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 7]))
@@ -106,6 +108,18 @@ for nombre, (ini, fin) in CONFIG["subperiodos"].items():
         print(f"  {name:25s}  ret={annualized_return(W)*100:.1f}%  "
               f"sharpe={sharpe(r):.2f}  maxdd={max_drawdown(W)*100:.1f}%")
 
+    # ── exportar CSV para PGFPlots ────────────────────────────────────────────
+    df_export = pd.DataFrame({
+        'dia': np.arange(mask.sum()),
+        'bnn': W_bnn,
+        'garch': W_garch,
+        'buyhold': W_naive
+    })
+    csv_fname = f"{SAVE_DIR}/wealth_{ticker_clean}_{nombre}.csv"
+    df_export.to_csv(csv_fname, index=False)
+    print(f"CSV guardado: {csv_fname}")
+
+    # ── figura matplotlib ─────────────────────────────────────────────────────
     fig, ax = plt.subplots(figsize=(14, 5))
     fig.patch.set_facecolor("white")
     setup_ax(ax)
@@ -119,6 +133,6 @@ for nombre, (ini, fin) in CONFIG["subperiodos"].items():
     format_dates(ax)
     plt.tight_layout()
 
-    fname = f"{SAVE_DIR}/wealth_{CONFIG['ticker'].replace('^', '').replace('=', '_')}_{nombre.replace(' ', '_').replace('/', '-')}.png"
+    fname = f"{SAVE_DIR}/wealth_{ticker_clean}_{nombre.replace(' ', '_').replace('/', '-')}.png"
     plt.savefig(fname, dpi=150, bbox_inches="tight", facecolor="white")
-    print(f"\nGuardada: {fname}")
+    print(f"Guardada: {fname}")

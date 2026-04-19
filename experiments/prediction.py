@@ -97,3 +97,29 @@ plt.tight_layout()
 fname = f"{SAVE_DIR}/uncertainty_{CONFIG['ticker'].replace('^', '').replace('=', '_')}.png"
 plt.savefig(fname, dpi=150, bbox_inches="tight", facecolor="white")
 print(f"Guardada: {fname}")
+
+import pandas as pd
+
+# CSV volatilidad
+df_vol = pd.DataFrame({
+    'dia': np.arange(len(t)),
+    'realizada': smooth(y_vol) * 100,
+    'garch': smooth(garch_vol) * 100,
+    'bnn': smooth(bnn_vol) * 100
+})
+df_vol.to_csv(f"{SAVE_DIR}/vol_GSPC.csv", index=False)
+print(f"CSV guardado: {SAVE_DIR}/vol_GSPC.csv")
+
+# CSV incertidumbre
+df_unc = pd.DataFrame({
+    'dia': np.arange(len(t)),
+    'epistemica': bnn_epi * 100,
+    'aleatoria': bnn_alea * 100
+})
+df_unc.to_csv(f"{SAVE_DIR}/uncertainty_GSPC.csv", index=False)
+print(f"CSV guardado: {SAVE_DIR}/uncertainty_GSPC.csv")
+
+for year in range(1998, 2027, 2):
+    idx = next((i for i, d in enumerate(t) if d.year == year and d.month == 1), None)
+    if idx is not None:
+        print(f"{year}: {idx}")
