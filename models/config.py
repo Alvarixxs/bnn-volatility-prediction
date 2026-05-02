@@ -1,9 +1,9 @@
 CONFIG = {
-    "ticker": "^GSPC",
+    # "ticker": "^GSPC",
 
     # "ticker":  "NG=F", # gas
     # "ticker":  "CL=F", # petroleo
-    # "ticker":  "EWZ", # brasil
+    "ticker":  "EWZ", # brasil
 
     # "ticker":  "HG=F", # oro
     # "ticker":  "^N225", # NIKKEI

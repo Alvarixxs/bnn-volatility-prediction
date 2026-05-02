@@ -118,8 +118,3 @@ df_unc = pd.DataFrame({
 })
 df_unc.to_csv(f"{SAVE_DIR}/uncertainty_GSPC.csv", index=False)
 print(f"CSV guardado: {SAVE_DIR}/uncertainty_GSPC.csv")
-
-for year in range(1998, 2027, 2):
-    idx = next((i for i, d in enumerate(t) if d.year == year and d.month == 1), None)
-    if idx is not None:
-        print(f"{year}: {idx}")
