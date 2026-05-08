@@ -7,8 +7,10 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../models'))
 from config import CONFIG
 
+ticker_clean = CONFIG['ticker'].replace('^', '').replace('=', '_')
+
 # ── cargar datos ──────────────────────────────────────────────────────────────
-OUT_DIR  = f"results/{CONFIG['ticker'].replace('^', '').replace('=', '_')}"
+OUT_DIR  = f"results/{ticker_clean}"
 READ_DIR = f"{OUT_DIR}/data"
 SAVE_DIR = f"{OUT_DIR}/plots"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -78,7 +80,7 @@ ax.plot(t[sl], smooth(bnn_vol)[sl],   color=C_BNN,   lw=1.5, zorder=6, label="Re
 ax.set_ylabel("Volatilidad", fontsize=16)
 ax.legend(facecolor="white", edgecolor="#dddddd", fontsize=16, loc="upper left")
 plt.tight_layout()
-fname = f"{SAVE_DIR}/vol_{CONFIG['ticker'].replace('^', '').replace('=', '_')}.png"
+fname = f"{SAVE_DIR}/vol_{ticker_clean}.png"
 plt.savefig(fname, dpi=150, bbox_inches="tight", facecolor="white")
 print(f"\nGuardada: {fname}")
 
@@ -94,7 +96,7 @@ ax2.plot(t, bnn_alea, color=C_ALEA, lw=1.5, label="σ aleatórica")
 ax2.set_ylabel("Desviación típica", fontsize=16)
 ax2.legend(facecolor="white", edgecolor="#dddddd", fontsize=16, loc="upper left")
 plt.tight_layout()
-fname = f"{SAVE_DIR}/uncertainty_{CONFIG['ticker'].replace('^', '').replace('=', '_')}.png"
+fname = f"{SAVE_DIR}/uncertainty_{ticker_clean}.png"
 plt.savefig(fname, dpi=150, bbox_inches="tight", facecolor="white")
 print(f"Guardada: {fname}")
 
@@ -107,8 +109,8 @@ df_vol = pd.DataFrame({
     'garch': smooth(garch_vol) * 100,
     'bnn': smooth(bnn_vol) * 100
 })
-df_vol.to_csv(f"{SAVE_DIR}/vol_GSPC.csv", index=False)
-print(f"CSV guardado: {SAVE_DIR}/vol_GSPC.csv")
+df_vol.to_csv(f"{SAVE_DIR}/vol_{ticker_clean}.csv", index=False)
+print(f"CSV guardado: {SAVE_DIR}/vol_{ticker_clean}.csv")
 
 # CSV incertidumbre
 df_unc = pd.DataFrame({
@@ -116,5 +118,5 @@ df_unc = pd.DataFrame({
     'epistemica': bnn_epi * 100,
     'aleatoria': bnn_alea * 100
 })
-df_unc.to_csv(f"{SAVE_DIR}/uncertainty_GSPC.csv", index=False)
-print(f"CSV guardado: {SAVE_DIR}/uncertainty_GSPC.csv")
+df_unc.to_csv(f"{SAVE_DIR}/uncertainty_{ticker_clean}.csv", index=False)
+print(f"CSV guardado: {SAVE_DIR}/uncertainty_{ticker_clean}.csv")

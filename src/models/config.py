@@ -30,6 +30,7 @@ CONFIG = {
     "lr":         1e-3,
     "batch_size": 64,
     "max_epochs": 500,
+    "n_elbo_samples": 3,
 
     # Inferencia bayesiana
     "n_samples":  500,

@@ -54,6 +54,30 @@ def vol_strategy_bnn(vol_pred, uncertainty, returns, n_std=0):
             w[i] = 0
     return w * returns
 
+def vol_strategy_bnn_penalty(vol_pred, uncertainty, returns, kappa=1.0):
+    """
+    Penalización continua por incertidumbre epistémica.
+    
+    El peso base TARGET_VOL / vol_pred se multiplica por un factor en (0,1]
+    que decrece suavemente cuando la incertidumbre supera su media histórica:
+    
+        factor_t = exp(-kappa * max(z_t, 0))
+    
+    donde z_t = (u_t - mu_t) / sigma_t es el z-score expanding-window.
+    kappa=0 → sin penalización, kappa grande → se aproxima al umbral duro.
+    """
+    eps = 1e-8
+    w   = np.clip(TARGET_VOL / vol_pred, W_MIN, W_MAX).copy()
+
+    for i in range(1, len(uncertainty)):
+        mu    = uncertainty[:i].mean()
+        std   = uncertainty[:i].std() if i > 1 else eps
+        z     = (uncertainty[i] - mu) / (std + eps)
+        factor = np.exp(-kappa * max(z, 0.0))   # ∈ (0, 1]
+        w[i]  *= factor
+
+    return w * returns
+
 r_bnn   = vol_strategy_bnn(bnn_vol, bnn_epi, ret_te)
 r_garch = vol_strategy(garch_vol, TARGET_VOL_GARCH, ret_te)
 r_naive = ret_te

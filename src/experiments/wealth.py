@@ -45,13 +45,71 @@ W_MIN, W_MAX     = 0.2, 2.0
 def vol_strategy(vol_pred, returns):
     return np.clip(TARGET_VOL_GARCH / vol_pred, W_MIN, W_MAX) * returns
 
-def vol_strategy_bnn_threshold(vol_pred, uncertainty, returns, n_std=0):
+def vol_strategy_bnn(vol_pred, uncertainty, returns):
     w = np.clip(TARGET_VOL / vol_pred, W_MIN, W_MAX).copy()
     for i in range(1, len(uncertainty)):
-        mu  = uncertainty[:i].mean()
-        std = uncertainty[:i].std() if i > 1 else 0
-        if uncertainty[i] > mu + n_std * std:
+        u_mean = uncertainty[:i].mean()
+        w[i]  /= (1 + 0.5 * uncertainty[i] / u_mean)
+    return w * returns
+
+def vol_strategy_bnn_threshold(vol_pred, uncertainty, returns):
+    w = np.clip(TARGET_VOL / vol_pred, W_MIN, W_MAX).copy()
+    for i in range(1, len(uncertainty)):
+        mu  = np.mean(uncertainty[:i])
+        if uncertainty[i] > mu:
             w[i] = 0
+    return w * returns
+
+def vol_strategy_bnn_penalty(vol_pred, uncertainty, returns, kappa=1.0):
+    """
+    Penalización continua por incertidumbre epistémica.
+    
+    El peso base TARGET_VOL / vol_pred se multiplica por un factor en (0,1]
+    que decrece suavemente cuando la incertidumbre supera su media histórica:
+    
+        factor_t = exp(-kappa * max(z_t, 0))
+    
+    donde z_t = (u_t - mu_t) / sigma_t es el z-score expanding-window.
+    kappa=0 → sin penalización, kappa grande → se aproxima al umbral duro.
+    """
+    eps = 1e-8
+    w   = np.clip(TARGET_VOL / vol_pred, W_MIN, W_MAX).copy()
+
+    for i in range(1, len(uncertainty)):
+        mu    = uncertainty[:i].mean()
+        std   = uncertainty[:i].std() if i > 1 else eps
+        z     = (uncertainty[i] - mu) / (std + eps)
+        factor = np.exp(-kappa * max(z, 0.0))   # ∈ (0, 1]
+        w[i]  *= factor
+
+    return w * returns
+
+def vol_strategy_bnn_adaptive(vol_pred, epi_std, returns, lambda_=5.0):
+    """
+    Vol-targeting con penalización adaptativa por incertidumbre epistémica.
+    
+    En condiciones típicas (incertidumbre relativa cerca de su mediana 
+    histórica) la posición es la del vol-targeting puro. Cuando la 
+    incertidumbre relativa excede su nivel típico —señal de régimen 
+    potencialmente fuera de distribución— el peso se reduce de forma 
+    suave y proporcional al exceso.
+    
+    Penalización: 1 / (1 + lambda * max(u_t/median - 1, 0))
+    
+    - lambda = 1 → un doble de la incertidumbre relativa típica reduce 
+      el peso a la mitad
+    - Sin umbral duro, sin pasar nunca a cash
+    - No penaliza en condiciones normales (preserva la señal del BNN)
+    """
+    eps     = 1e-8
+    rel_unc = epi_std / (vol_pred + eps)
+    w       = np.clip(TARGET_VOL / vol_pred, W_MIN, W_MAX).copy()
+
+    for t in range(1, len(rel_unc)):
+        baseline = np.median(rel_unc[:t])
+        excess   = max(rel_unc[t] / (baseline + eps) - 1, 0.0)
+        w[t]    *= np.exp(-lambda_*excess)
+
     return w * returns
 
 r_bnn   = vol_strategy_bnn_threshold(bnn_vol, bnn_epi, ret_te)

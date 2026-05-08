@@ -1,4 +1,3 @@
-# models.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,9 +22,9 @@ class BayesLinear(nn.Module):
         return F.linear(x, w, b)
 
     def kl(self):
-        ws = F.softplus(self.w_rho)
-        bs = F.softplus(self.b_rho)
-        pv = self.prior_std ** 2
+        ws  = F.softplus(self.w_rho)
+        bs  = F.softplus(self.b_rho)
+        pv  = self.prior_std ** 2
         def _kl(mu, sigma):
             return 0.5 * (sigma**2/pv + mu**2/pv - 1
                           + 2*(np.log(self.prior_std) - torch.log(sigma))).sum()
@@ -33,17 +32,15 @@ class BayesLinear(nn.Module):
 
 
 class BNN(nn.Module):
-    def __init__(self, input_dim=20, hidden=32, prior_std=1.0):
+    def __init__(self, input_dim=20, hidden=32, prior_std=1.0, y_mean=0.0):
         super().__init__()
         self.l1 = BayesLinear(input_dim, hidden, prior_std)
         self.l2 = BayesLinear(hidden, 1, prior_std)
-        self.log_obs_var = nn.Parameter(torch.tensor(-1.4))
+        # la red arranca prediciendo la volatilidad media incondicional
+        nn.init.constant_(self.l2.b_mu, y_mean)
 
     def forward(self, x, sample=True):
         return self.l2(F.relu(self.l1(x, sample)), sample).squeeze(-1)
-
-    def obs_std(self):
-        return torch.exp(0.5 * self.log_obs_var).clamp(min=0.3)
 
     def kl(self):
         return self.l1.kl() + self.l2.kl()
