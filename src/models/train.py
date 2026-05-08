@@ -38,6 +38,6 @@ def train_bnn(model, X_tr_n, y_tr, cfg):
             loss.backward()
             opt.step()
             train_loss += loss.item()
-        history.append(train_loss / len(dl))   # ← añadir
+        history.append(train_loss / len(dl))
 
-    return model, history   # ← modificar
+    return model, history
